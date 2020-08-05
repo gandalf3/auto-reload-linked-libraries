@@ -1,14 +1,3 @@
-bl_info = {
-    "name": "Auto-Reload Linked Libraries",
-    "author": "gandalf3",
-    "version": (0, 0, 1),
-    "blender": (2, 90, 0),
-    "description": "Automatically reload linked libraries when they are modified.",
-    "doc_url": "",
-    "tracker_url": "",
-    "category": "System",
-}
-
 import logging
 logger = logging.getLogger('auto_reload_libraries')
 logging.basicConfig(level=logging.INFO)
@@ -18,12 +7,11 @@ import os
 import sys
 
 # XXX add our "statically included" libraries
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), "extern"))
+# sys.path.insert(1, os.path.join(os.path.dirname(__file__), "extern"))
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-import bpy
 from bpy.app.handlers import persistent
 
 OBSERVERS = []
@@ -42,6 +30,12 @@ def load_handler(context: bpy.context):
         observer = LibraryObserver(lib)
         observer.start()
         OBSERVERS.append(observer)
+
+    # TODO only run timer if there are actually linked libraries
+    if (len(OBSERVERS) > 0):
+        if (not bpy.app.timers.is_registered(check_if_need_to_reload)):
+            bpy.app.timers.register(check_if_need_to_reload, persistent=True)
+
 
 class SimpleFileSystemEventHandler(FileSystemEventHandler):
     timeout = .3
@@ -73,7 +67,7 @@ class LibraryObserver(Observer):
                                      )
             logger.debug("dereferencing relative path: %s -> %s" % (library.filepath, libpath))
             self.is_relative = True
-        
+
         self.libname = library.name
         self.directory = os.path.dirname(libpath)
         self.filename = os.path.basename(libpath)
@@ -111,13 +105,18 @@ def do_lib_reload():
 
 def register():
     bpy.app.handlers.load_post.append(load_handler)
-    bpy.app.timers.register(check_if_need_to_reload, persistent=True)
+
+    # timer registered on-demand, see load_handler
+    # bpy.app.timers.register(check_if_need_to_reload, persistent=True)
 
     logger.info("Registered Auto-Reload Libraries")
 
 def unregister():
     bpy.app.handlers.load_post.remove(load_handler)
-    bpy.app.timers.register(check_if_need_to_reload)
+
+    if bpy.app.timers.is_registered(check_if_need_to_reload):
+        bpy.app.timers.unregister(check_if_need_to_reload)
 
 if __name__ == "__main__":
     register()
+
