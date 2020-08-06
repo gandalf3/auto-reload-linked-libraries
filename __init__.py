@@ -31,6 +31,7 @@ SHOULD_RELOAD = False
 
 @persistent
 def load_handler(context: bpy.context):
+    logger.debug("load_handler running")
     logger.debug("clearing OBSERVERS: %s" % (OBSERVERS))
     for O in OBSERVERS:
         O.stop()
@@ -44,10 +45,13 @@ def load_handler(context: bpy.context):
         observer.start()
         OBSERVERS.append(observer)
 
-    # TODO only run timer if there are actually linked libraries
+    # Only run timer if there are actually linked libraries
     if (len(OBSERVERS) > 0):
         if (not bpy.app.timers.is_registered(check_if_need_to_reload)):
             bpy.app.timers.register(check_if_need_to_reload, persistent=True)
+    else:
+        if (bpy.app.timers.is_registered(check_if_need_to_reload)):
+            bpy.app.timers.unregister(check_if_need_to_reload)
 
 
 class SimpleFileSystemEventHandler(FileSystemEventHandler):
@@ -96,6 +100,7 @@ class LibraryObserver(Observer):
         self.triggered = False
 
 def check_if_need_to_reload():
+    logger.debug("checking")
     if SHOULD_RELOAD:
         do_lib_reload()
 
