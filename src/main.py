@@ -1,17 +1,18 @@
 import logging
 logger = logging.getLogger('auto_reload_libraries')
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 import time
 import os
 import sys
 
-# XXX add our "statically included" libraries
-# sys.path.insert(1, os.path.join(os.path.dirname(__file__), "extern"))
+# XXX add our "statically included" libraries to system include path
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), "extern"))
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+import bpy
 from bpy.app.handlers import persistent
 
 OBSERVERS = []
@@ -28,6 +29,7 @@ def load_handler(context: bpy.context):
     for lib in bpy.data.libraries:
         logger.debug("installing observer for %s" % (lib.name))
         observer = LibraryObserver(lib)
+        logger.debug(observer)
         observer.start()
         OBSERVERS.append(observer)
 
