@@ -18,5 +18,3 @@ orig_name=$(basename "$orig_dir")
 cd ".."
 zip -r "$orig_dir/$orig_name.zip" "$orig_name" -x "*__pycache__*" "*.git*" "$orig_name/make_zip.sh" "$orig_name/$orig_name.zip"
 cd "$orig_dir"
-# mv "$build_dir/$addon_name.zip" ./
-# rm -r "$build_dir"
