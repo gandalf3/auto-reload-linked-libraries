@@ -10,8 +10,11 @@ bl_info = {
 }
 
 import logging
+logging.basicConfig(level=logging.WARNING)
+# logging.basicConfig(level=logging.DEBUG)
+
 logger = logging.getLogger('auto_reload_libraries')
-logging.basicConfig(level=logging.DEBUG)
+logger.level = logging.DEBUG
 
 import time
 import os
@@ -32,6 +35,15 @@ SHOULD_RELOAD = False
 @persistent
 def load_handler(context: bpy.context):
     logger.debug("load_handler running")
+    setup_observers()
+
+@persistent
+def depsgraph_update_post_handler(scene: bpy.types.Scene, context: bpy.context):
+    if len(bpy.data.libraries) != len(OBSERVERS):
+        logger.debug("Change in linked libraries detected")
+        setup_observers()
+
+def setup_observers():
     logger.debug("clearing OBSERVERS: %s" % (OBSERVERS))
     for O in OBSERVERS:
         O.stop()
@@ -53,7 +65,6 @@ def load_handler(context: bpy.context):
         if (bpy.app.timers.is_registered(check_if_need_to_reload)):
             bpy.app.timers.unregister(check_if_need_to_reload)
 
-
 class SimpleFileSystemEventHandler(FileSystemEventHandler):
     timeout = .3
     last_occurance = 0
@@ -62,18 +73,22 @@ class SimpleFileSystemEventHandler(FileSystemEventHandler):
         self.func = func
 
     def on_any_event(self, event):
+        logger.debug(event)
         now = time.time()
         if (now - self.last_occurance <= self.timeout):
             return
 
+        time.sleep(self.timeout)
         self.func()
         self.last_occurance = time.time()
 
+
+
 class LibraryObserver(Observer):
+
     def __init__(self, library):
         super().__init__()
         self.is_relative = False
-
         self.triggered = False
 
         libpath = library.filepath
@@ -88,19 +103,33 @@ class LibraryObserver(Observer):
         self.libname = library.name
         self.directory = os.path.dirname(libpath)
         self.filename = os.path.basename(libpath)
+        self.mtime = os.path.getmtime(libpath)
+        self.libpath = libpath
 
-        self.schedule(SimpleFileSystemEventHandler(lambda: self.trigger()), self.directory, recursive=False)
+        logger.debug("Adding watcher to %s" % self.directory)
+        self.schedule(
+            SimpleFileSystemEventHandler(lambda: self.trigger()), self.directory, recursive=False
+        )
 
     def trigger(self):
-        global SHOULD_RELOAD
-        SHOULD_RELOAD = True
-        self.triggered = True
+        new_mtime = os.path.getmtime(self.libpath)
+        logger.debug("trigger %s %s", self.mtime, new_mtime)
+
+        if new_mtime > self.mtime:
+            global SHOULD_RELOAD
+            SHOULD_RELOAD = True
+            self.triggered = True
+            self.mtime = new_mtime
 
     def reset(self):
         self.triggered = False
 
+    # def stop(self):
+        # self.watched_directories.remove(self.directory)
+
+
 def check_if_need_to_reload():
-    logger.debug("checking")
+    # logger.debug("checking")
     if SHOULD_RELOAD:
         do_lib_reload()
 
@@ -121,16 +150,33 @@ def do_lib_reload():
     global SHOULD_RELOAD
     SHOULD_RELOAD = False
 
+def one_time_setup():
+    setup_observers()
+    bpy.app.timers.unregister(one_time_setup)
+    return 10
+
+def one_time_observer_clear():
+    logger.debug("clearing OBSERVERS: %s" % (OBSERVERS))
+    for O in OBSERVERS:
+        O.stop()
+    bpy.app.timers.unregister(one_time_observer_clear)
+
+
 def register():
     bpy.app.handlers.load_post.append(load_handler)
+    bpy.app.handlers.depsgraph_update_post.append(depsgraph_update_post_handler)
 
-    # timer registered on-demand, see load_handler
+    bpy.app.timers.register(one_time_setup, persistent=False)
+
+    # timer registered on-demand, see setup_observers()
     # bpy.app.timers.register(check_if_need_to_reload, persistent=True)
 
     logger.info("Registered Auto-Reload Libraries")
 
 def unregister():
     bpy.app.handlers.load_post.remove(load_handler)
+    bpy.app.handlers.depsgraph_update_post.remove(depsgraph_update_post_handler)
+    bpy.app.timers.register(one_time_observer_clear, persistent=False)
 
     if bpy.app.timers.is_registered(check_if_need_to_reload):
         bpy.app.timers.unregister(check_if_need_to_reload)
