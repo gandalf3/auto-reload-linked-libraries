@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Auto-Reload Linked Libraries",
     "author": "gandalf3",
-    "version": (0, 9, 0),
+    "version": (1, 0, 0),
     "blender": (2, 80, 0),
     "description": "Automatically reload linked libraries when they are modified.",
     "doc_url": "https://github.com/gandalf3/auto-reload-linked-libraries",
@@ -11,10 +11,9 @@ bl_info = {
 
 import logging
 logging.basicConfig(level=logging.WARNING)
-# logging.basicConfig(level=logging.DEBUG)
 
 logger = logging.getLogger('auto_reload_libraries')
-logger.level = logging.DEBUG
+logger.level = logging.INFO
 
 import time
 import os
