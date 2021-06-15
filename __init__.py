@@ -167,8 +167,11 @@ class LibraryObserver():
 
 
 def check_if_need_to_reload():
-    if SHOULD_RELOAD:
-        do_lib_reload()
+    try:
+        if SHOULD_RELOAD:
+            do_lib_reload()
+    except KeyboardInterrupt:
+        pass
 
     return .3
 
