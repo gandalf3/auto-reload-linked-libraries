@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Auto-Reload Linked Libraries",
     "author": "gandalf3",
-    "version": (0, 0, 4),
+    "version": (0, 9, 0),
     "blender": (2, 80, 0),
     "description": "Automatically reload linked libraries when they are modified.",
     "doc_url": "https://github.com/gandalf3/auto-reload-linked-libraries",
@@ -65,7 +65,7 @@ def setup_observers():
         if (bpy.app.timers.is_registered(check_if_need_to_reload)):
             bpy.app.timers.unregister(check_if_need_to_reload)
 
-class SimpleFileSystemEventHandler(FileSystemEventHandler):
+class AllEventTrigger(FileSystemEventHandler):
     timeout = .3
     last_occurance = 0
 
@@ -82,12 +82,47 @@ class SimpleFileSystemEventHandler(FileSystemEventHandler):
         self.func()
         self.last_occurance = time.time()
 
+class DirectoryObserver(Observer):
+
+    watched_directories = {}
+
+    def __init__(self, directory, callback):
+        super().__init__()
+
+        self.directory = directory
+        self.callback = callback
+
+        if directory not in self.watched_directories:
+            self.watched_directories[self.directory] = [callback]
+            self.schedule(
+                AllEventTrigger(self.call_callbacks), self.directory, recursive=False
+            )
+
+            logger.debug("Watching directory %s" % directory)
+
+        else:
+            self.watched_directories[self.directory].append(callback)
+            logger.debug("Already watching %s" % self.directory)
+
+    def call_callbacks(self):
+        for cb in self.watched_directories[self.directory]:
+            cb()
+
+    def stop(self):
+        if self.directory not in self.watched_directories:
+            return
+
+        self.watched_directories[self.directory].remove(self.callback)
+
+        if len(self.watched_directories[self.directory]) <= 0:
+            del self.watched_directories[self.directory]
+            logger.debug("Stopping watching of %s" % self.directory)
+            super().stop()
 
 
-class LibraryObserver(Observer):
+class LibraryObserver():
 
     def __init__(self, library):
-        super().__init__()
         self.is_relative = False
         self.triggered = False
 
@@ -106,16 +141,13 @@ class LibraryObserver(Observer):
         self.mtime = os.path.getmtime(libpath)
         self.libpath = libpath
 
-        logger.debug("Adding watcher to %s" % self.directory)
-        self.schedule(
-            SimpleFileSystemEventHandler(lambda: self.trigger()), self.directory, recursive=False
-        )
+        self.directory_observer = DirectoryObserver(self.directory, self.trigger)
 
     def trigger(self):
         new_mtime = os.path.getmtime(self.libpath)
-        logger.debug("trigger %s %s", self.mtime, new_mtime)
 
         if new_mtime > self.mtime:
+            logger.debug("%s modified! %s > %s" % (self.filename, self.mtime, new_mtime))
             global SHOULD_RELOAD
             SHOULD_RELOAD = True
             self.triggered = True
@@ -124,12 +156,18 @@ class LibraryObserver(Observer):
     def reset(self):
         self.triggered = False
 
-    # def stop(self):
-        # self.watched_directories.remove(self.directory)
+    def start(self):
+        self.directory_observer.start()
+
+    def stop(self):
+        self.directory_observer.stop()
+        self.directory_observer.join()
+
+    def __repr__(self):
+        return f"LibraryObserver(<{self.libname}>)"
 
 
 def check_if_need_to_reload():
-    # logger.debug("checking")
     if SHOULD_RELOAD:
         do_lib_reload()
 
@@ -155,11 +193,12 @@ def one_time_setup():
     bpy.app.timers.unregister(one_time_setup)
     return 10
 
-def one_time_observer_clear():
+def one_time_unsetup():
     logger.debug("clearing OBSERVERS: %s" % (OBSERVERS))
     for O in OBSERVERS:
         O.stop()
-    bpy.app.timers.unregister(one_time_observer_clear)
+    OBSERVERS.clear()
+    bpy.app.timers.unregister(one_time_unsetup)
 
 
 def register():
@@ -176,7 +215,7 @@ def register():
 def unregister():
     bpy.app.handlers.load_post.remove(load_handler)
     bpy.app.handlers.depsgraph_update_post.remove(depsgraph_update_post_handler)
-    bpy.app.timers.register(one_time_observer_clear, persistent=False)
+    bpy.app.timers.register(one_time_unsetup, persistent=False)
 
     if bpy.app.timers.is_registered(check_if_need_to_reload):
         bpy.app.timers.unregister(check_if_need_to_reload)
