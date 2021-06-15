@@ -4,7 +4,7 @@ A simple Blender addon which auto-reloads linked library .blend files when it de
 
 ## Installation
 
-1. Download the latest `.zip` release.
+1. Download the latest `.zip` from [the releases page](https://github.com/gandalf3/auto-reload-linked-libraries/releases).
 2. In Blender's User Preferences > Addons, click *Install*.
 3. Navigate to the downloaded zip and select it.
 4. Enable the addon.
