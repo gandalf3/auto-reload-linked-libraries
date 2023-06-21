@@ -43,14 +43,14 @@ def depsgraph_update_post_handler(scene: bpy.types.Scene, context: bpy.context):
         setup_observers()
 
 def setup_observers():
-    logger.debug("clearing OBSERVERS: %s" % (OBSERVERS))
+    logger.debug("clearing OBSERVERS: %s", OBSERVERS)
     for O in OBSERVERS:
         O.stop()
     OBSERVERS.clear()
-    logger.debug("cleared OBSERVERS: %s" % (OBSERVERS))
+    logger.debug("cleared OBSERVERS: %s", OBSERVERS)
 
     for lib in bpy.data.libraries:
-        logger.debug("installing observer for %s" % (lib.name))
+        logger.debug("installing observer for %s", lib.name)
         observer = LibraryObserver(lib)
         logger.debug(observer)
         observer.start()
@@ -97,11 +97,11 @@ class DirectoryObserver(Observer):
                 AllEventTrigger(self.call_callbacks), self.directory, recursive=False
             )
 
-            logger.debug("Watching directory %s" % directory)
+            logger.debug("Watching directory %s", directory)
 
         else:
             self.watched_directories[self.directory].append(callback)
-            logger.debug("Already watching %s" % self.directory)
+            logger.debug("Already watching %s", self.directory)
 
     def call_callbacks(self):
         for cb in self.watched_directories[self.directory]:
@@ -115,7 +115,7 @@ class DirectoryObserver(Observer):
 
         if len(self.watched_directories[self.directory]) <= 0:
             del self.watched_directories[self.directory]
-            logger.debug("Stopping watching of %s" % self.directory)
+            logger.debug("Stopping watching of %s", self.directory)
             super().stop()
             super().join(timeout=3)
             if super().is_alive():
@@ -134,7 +134,7 @@ class LibraryObserver():
                                      os.path.dirname(bpy.data.filepath),
                                      library.filepath[2:]
                                      )
-            logger.debug("dereferencing relative path: %s -> %s" % (library.filepath, libpath))
+            logger.debug("dereferencing relative path: %s -> %s", library.filepath, libpath)
             self.is_relative = True
 
         self.libname = library.name
@@ -149,7 +149,7 @@ class LibraryObserver():
         new_mtime = os.path.getmtime(self.libpath)
 
         if new_mtime > self.mtime:
-            logger.debug("%s modified! %s > %s" % (self.filename, self.mtime, new_mtime))
+            logger.debug("%s modified! %s > %s", self.filename, self.mtime, new_mtime)
             global SHOULD_RELOAD
             SHOULD_RELOAD = True
             self.triggered = True
@@ -183,8 +183,8 @@ def do_lib_reload():
             libname = O.libname
             libdir = O.directory
             libfile = O.filename
-            logger.info("Reloading %s" % (libname))
-            logger.debug("bpy.ops.wm.lib_reload(library=\"%s\", directory=\"%s\", filename=\"%s\")" % (libname, libdir, libfile))
+            logger.info("Reloading %s", libname)
+            logger.debug("bpy.ops.wm.lib_reload(library=\"%s\", directory=\"%s\", filename=\"%s\")", libname, libdir, libfile)
             logger.debug(bpy.ops.wm.lib_reload(library=libname, directory=libdir, filename=libfile))
 
             O.reset()
@@ -198,7 +198,7 @@ def one_time_setup():
     return 10
 
 def one_time_unsetup():
-    logger.debug("clearing OBSERVERS: %s" % (OBSERVERS))
+    logger.debug("clearing OBSERVERS: %s", OBSERVERS)
     for O in OBSERVERS:
         O.stop()
     OBSERVERS.clear()
