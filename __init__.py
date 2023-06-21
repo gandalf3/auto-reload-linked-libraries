@@ -117,6 +117,9 @@ class DirectoryObserver(Observer):
             del self.watched_directories[self.directory]
             logger.debug("Stopping watching of %s" % self.directory)
             super().stop()
+            super().join(timeout=3)
+            if super().is_alive():
+                logger.warning("Timeout while stopping watching of '%s'", self.directory)
 
 
 class LibraryObserver():
@@ -160,7 +163,6 @@ class LibraryObserver():
 
     def stop(self):
         self.directory_observer.stop()
-        self.directory_observer.join()
 
     def __repr__(self):
         return f"LibraryObserver(<{self.libname}>)"
