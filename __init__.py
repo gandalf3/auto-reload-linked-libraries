@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Auto-Reload Linked Libraries",
     "author": "gandalf3",
-    "version": (1, 0, 0),
+    "version": (1, 0, 1),
     "blender": (2, 80, 0),
     "description": "Automatically reload linked libraries when they are modified.",
     "doc_url": "https://github.com/gandalf3/auto-reload-linked-libraries",
