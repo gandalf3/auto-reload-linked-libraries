@@ -22,7 +22,7 @@ import sys
 # XXX add our "statically included" libraries to system include path
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), "extern"))
 
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, EVENT_TYPE_OPENED
 from watchdog.observers import Observer
 
 import bpy
@@ -73,6 +73,11 @@ class AllEventTrigger(FileSystemEventHandler):
 
     def on_any_event(self, event):
         logger.debug(event)
+
+        if event.event_type == EVENT_TYPE_OPENED:
+            logger.debug("ignoring open event")
+            return
+
         now = time.time()
         if (now - self.last_occurance <= self.timeout):
             return
